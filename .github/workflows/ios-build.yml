@@ -1,0 +1,64 @@
+name: iOS Build and Render
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-render:
+    runs-on: xcode-27
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Choose an iPhone Simulator
+        shell: bash
+        run: |
+          DEVICE_UDID="$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          candidates = [
+              device
+              for runtime, runtime_devices in devices.items()
+              if "iOS-27" in runtime
+              for device in runtime_devices
+              if device["name"].startswith("iPhone")
+          ]
+          if not candidates:
+              raise SystemExit("No available iOS 27 iPhone simulator found")
+          print(candidates[0]["udid"])
+          ')"
+          echo "DEVICE_UDID=$DEVICE_UDID" >> "$GITHUB_ENV"
+
+      - name: Build for iPhone Simulator
+        run: |
+          xcodebuild             -project PersonalFitnessNative.xcodeproj             -scheme PersonalFitnessNative             -destination "platform=iOS Simulator,id=$DEVICE_UDID"             -configuration Debug             -derivedDataPath DerivedData             CODE_SIGNING_ALLOWED=NO             build
+
+      - name: Launch app and capture iPhone screenshot
+        run: |
+          xcrun simctl boot "$DEVICE_UDID" || true
+          xcrun simctl bootstatus "$DEVICE_UDID" -b
+          xcrun simctl install "$DEVICE_UDID" DerivedData/Build/Products/Debug-iphonesimulator/PersonalFitnessNative.app
+          xcrun simctl launch "$DEVICE_UDID" com.bhavishyatr.personalfitnessnative --ui-snapshot
+          sleep 3
+          xcrun simctl io "$DEVICE_UDID" screenshot personal-fitness-native.png
+
+      - name: Upload rendered iPhone screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: iphone-render
+          path: personal-fitness-native.png
+          if-no-files-found: error
