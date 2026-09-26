@@ -1,0 +1,48 @@
+name: PersonalFitnessNative
+options:
+  bundleIdPrefix: com.bhavishyatr
+  deploymentTarget:
+    iOS: "27.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+
+packages: {}
+
+targets:
+  PersonalFitnessNative:
+    type: application
+    platform: iOS
+    deploymentTarget: "27.0"
+    sources:
+      - path: PersonalFitnessNative
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bhavishyatr.personalfitnessnative
+        PRODUCT_NAME: PersonalFitnessNative
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Personal Fitness
+        INFOPLIST_KEY_NSHealthShareUsageDescription: Personal Fitness reads your step count to show how active you are today.
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        CODE_SIGN_ENTITLEMENTS: PersonalFitnessNative/Resources/PersonalFitnessNative.entitlements
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+    dependencies:
+      - sdk: HealthKit.framework
+
+schemes:
+  PersonalFitnessNative:
+    build:
+      targets:
+        PersonalFitnessNative: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    archive:
+      config: Release
