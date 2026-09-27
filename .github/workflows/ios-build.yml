@@ -84,7 +84,6 @@ jobs:
           ')"
 
           echo "DEVICE_UDID=$DEVICE_UDID" >> "$GITHUB_ENV"
-          xcrun simctl boot "$DEVICE_UDID" || true
 
       - name: Build for iPhone Simulator
         shell: bash
@@ -101,6 +100,7 @@ jobs:
       - name: Launch app and capture iPhone screenshot
         shell: bash
         run: |
+          xcrun simctl boot "$DEVICE_UDID" || true
           xcrun simctl bootstatus "$DEVICE_UDID" -b
           xcrun simctl install "$DEVICE_UDID" "$DERIVED_DATA/Build/Products/Debug-iphonesimulator/PersonalFitnessNative.app"
           xcrun simctl launch "$DEVICE_UDID" "$BUNDLE_ID" --ui-snapshot
