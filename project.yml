@@ -25,7 +25,7 @@ targets:
         PRODUCT_NAME: PersonalFitnessNative
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Personal Fitness
-        INFOPLIST_KEY_NSHealthShareUsageDescription: Personal Fitness reads your step count to show how active you are today.
+        INFOPLIST_KEY_NSHealthShareUsageDescription: Personal Fitness reads your step count and running workouts to show your activity and running records.
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
