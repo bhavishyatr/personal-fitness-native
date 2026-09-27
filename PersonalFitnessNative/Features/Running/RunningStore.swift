@@ -38,10 +38,11 @@ final class RunningStore {
     func bestRun(near targetMiles: Double) -> RunningDistanceRecord? {
         let tolerance = 0.15
 
-        guard let workout = workouts
-            .filter { abs($0.distanceMiles - targetMiles) <= tolerance }
-            .min(by: { $0.duration < $1.duration })
-        else {
+        let qualifyingRuns = workouts.filter {
+            abs($0.distanceMiles - targetMiles) <= tolerance
+        }
+
+        guard let workout = qualifyingRuns.min(by: { $0.duration < $1.duration }) else {
             return nil
         }
 
