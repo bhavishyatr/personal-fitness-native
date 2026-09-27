@@ -7,58 +7,118 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-render:
     runs-on: xcode-27
+    timeout-minutes: 15
+
+    env:
+      PROJECT: PersonalFitnessNative.xcodeproj
+      SCHEME: PersonalFitnessNative
+      DERIVED_DATA: DerivedData
+      BUNDLE_ID: com.bhavishyatr.personalfitnessnative
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Show Xcode version
         run: xcodebuild -version
 
       - name: Install XcodeGen
-        run: brew install xcodegen
+        shell: bash
+        run: |
+          if command -v xcodegen >/dev/null 2>&1; then
+            xcodegen --version
+          else
+            brew install xcodegen
+          fi
 
       - name: Generate Xcode project
         run: xcodegen generate
+
+      - name: Validate generated project
+        run: xcodebuild -list -project "$PROJECT"
 
       - name: Choose an iPhone Simulator
         shell: bash
         run: |
           DEVICE_UDID="$(xcrun simctl list devices available -j | python3 -c '
-          import json, sys
+          import json
+          import re
+          import sys
+
           devices = json.load(sys.stdin)["devices"]
-          candidates = [
-              device
-              for runtime, runtime_devices in devices.items()
-              if "iOS-27" in runtime
-              for device in runtime_devices
-              if device["name"].startswith("iPhone")
-          ]
-          if not candidates:
-              raise SystemExit("No available iOS 27 iPhone simulator found")
-          print(candidates[0]["udid"])
+
+          def runtime_version(runtime):
+              match = re.search(r"iOS-(\d+(?:-\d+)*)$", runtime)
+              if not match:
+                  return ()
+              return tuple(int(part) for part in match.group(1).split("-"))
+
+          runtimes = sorted(
+              (runtime for runtime in devices if runtime_version(runtime)),
+              key=runtime_version,
+              reverse=True,
+          )
+
+          for runtime in runtimes:
+              iphones = [
+                  device
+                  for device in devices[runtime]
+                  if device.get("isAvailable", True)
+                  and device["name"].startswith("iPhone")
+              ]
+              if iphones:
+                  print(iphones[0]["udid"])
+                  break
+          else:
+              raise SystemExit("No available iPhone simulator found")
           ')"
+
           echo "DEVICE_UDID=$DEVICE_UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$DEVICE_UDID" || true
 
       - name: Build for iPhone Simulator
+        shell: bash
         run: |
-          xcodebuild             -project PersonalFitnessNative.xcodeproj             -scheme PersonalFitnessNative             -destination "platform=iOS Simulator,id=$DEVICE_UDID"             -configuration Debug             -derivedDataPath DerivedData             CODE_SIGNING_ALLOWED=NO             build
+          xcodebuild \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "platform=iOS Simulator,id=$DEVICE_UDID" \
+            -configuration Debug \
+            -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
 
       - name: Launch app and capture iPhone screenshot
+        shell: bash
         run: |
-          xcrun simctl boot "$DEVICE_UDID" || true
           xcrun simctl bootstatus "$DEVICE_UDID" -b
-          xcrun simctl install "$DEVICE_UDID" DerivedData/Build/Products/Debug-iphonesimulator/PersonalFitnessNative.app
-          xcrun simctl launch "$DEVICE_UDID" com.bhavishyatr.personalfitnessnative --ui-snapshot
+          xcrun simctl install "$DEVICE_UDID" "$DERIVED_DATA/Build/Products/Debug-iphonesimulator/PersonalFitnessNative.app"
+          xcrun simctl launch "$DEVICE_UDID" "$BUNDLE_ID" --ui-snapshot
           sleep 3
           xcrun simctl io "$DEVICE_UDID" screenshot personal-fitness-native.png
 
       - name: Upload rendered iPhone screenshot
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: iphone-render
           path: personal-fitness-native.png
           if-no-files-found: error
+          retention-days: 7
+
+      - name: Shut down simulator
+        if: always()
+        shell: bash
+        run: |
+          if [[ -n "${DEVICE_UDID:-}" ]]; then
+            xcrun simctl shutdown "$DEVICE_UDID" || true
+          fi
