@@ -8,6 +8,11 @@ struct AppRootView: View {
                     Label("Today", systemImage: "figure.walk")
                 }
 
+            RunningDashboardView()
+                .tabItem {
+                    Label("Running", systemImage: "figure.run")
+                }
+
             WorkoutLibraryView()
                 .tabItem {
                     Label("Workouts", systemImage: "dumbbell.fill")
