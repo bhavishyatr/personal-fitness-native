@@ -116,7 +116,7 @@ struct RunningDashboardView: View {
                     .foregroundStyle(.secondary)
 
                 Text(
-                    "\(record.workout.distanceMiles, format: .number.precision(.fractionLength(2))) mi · \(dateText(record.workout.startDate))"
+                    "\(mileageText(record.workout.distanceMiles)) · \(dateText(record.workout.startDate))"
                 )
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
@@ -146,7 +146,7 @@ struct RunningDashboardView: View {
                 systemImage: "arrow.right",
                 workout: store.longestRun,
                 primaryValue: store.longestRun.map {
-                    "\($0.distanceMiles, format: .number.precision(.fractionLength(2))) mi"
+                    mileageText($0.distanceMiles)
                 },
                 secondaryValue: store.longestRun.map {
                     "\(durationText($0.duration)) · \(paceText($0))"
@@ -158,7 +158,7 @@ struct RunningDashboardView: View {
                 systemImage: "arrow.left",
                 workout: store.shortestRun,
                 primaryValue: store.shortestRun.map {
-                    "\($0.distanceMiles, format: .number.precision(.fractionLength(2))) mi"
+                    mileageText($0.distanceMiles)
                 },
                 secondaryValue: store.shortestRun.map {
                     "\(durationText($0.duration)) · \(paceText($0))"
@@ -173,7 +173,7 @@ struct RunningDashboardView: View {
                     paceText($0)
                 },
                 secondaryValue: store.fastestRun.map {
-                    "\($0.distanceMiles, format: .number.precision(.fractionLength(2))) mi · \(durationText($0.duration))"
+                    "\(mileageText($0.distanceMiles)) · \(durationText($0.duration))"
                 }
             )
         }
@@ -254,6 +254,10 @@ struct RunningDashboardView: View {
         }
 
         return "\(durationText(pace)) /mi"
+    }
+
+    private func mileageText(_ miles: Double) -> String {
+        String(format: "%.2f mi", miles)
     }
 
     private func dateText(_ date: Date) -> String {
