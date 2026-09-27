@@ -93,21 +93,35 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
-      - name: Launch app and capture iPhone screenshot
+      - name: Launch app and capture iPhone screenshots
         shell: bash
         run: |
           xcrun simctl boot "$DEVICE_UDID" || true
           xcrun simctl bootstatus "$DEVICE_UDID" -b
           xcrun simctl install "$DEVICE_UDID" "$DERIVED_DATA/Build/Products/Debug-iphonesimulator/PersonalFitnessNative.app"
-          xcrun simctl launch "$DEVICE_UDID" "$BUNDLE_ID" --ui-snapshot
-          sleep 3
-          xcrun simctl io "$DEVICE_UDID" screenshot personal-fitness-native.png
 
-      - name: Upload rendered iPhone screenshot
+          xcrun simctl launch "$DEVICE_UDID" "$BUNDLE_ID" --ui-snapshot
+          sleep 2
+          xcrun simctl io "$DEVICE_UDID" screenshot personal-fitness-today.png
+
+          xcrun simctl terminate "$DEVICE_UDID" "$BUNDLE_ID"
+          xcrun simctl launch "$DEVICE_UDID" "$BUNDLE_ID" --ui-snapshot --snapshot-running
+          sleep 2
+          xcrun simctl io "$DEVICE_UDID" screenshot personal-fitness-running.png
+
+          xcrun simctl terminate "$DEVICE_UDID" "$BUNDLE_ID"
+          xcrun simctl launch "$DEVICE_UDID" "$BUNDLE_ID" --ui-snapshot --snapshot-workouts
+          sleep 2
+          xcrun simctl io "$DEVICE_UDID" screenshot personal-fitness-workouts.png
+
+      - name: Upload rendered iPhone screenshots
         uses: actions/upload-artifact@v7
         with:
           name: iphone-render
-          path: personal-fitness-native.png
+          path: |
+            personal-fitness-today.png
+            personal-fitness-running.png
+            personal-fitness-workouts.png
           if-no-files-found: error
           retention-days: 7
 
