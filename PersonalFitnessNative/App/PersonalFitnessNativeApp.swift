@@ -4,7 +4,7 @@ import SwiftUI
 struct PersonalFitnessNativeApp: App {
     var body: some Scene {
         WindowGroup {
-            TodayStepsView()
+            AppRootView()
         }
     }
 }
