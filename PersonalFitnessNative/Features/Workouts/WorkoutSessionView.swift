@@ -74,7 +74,7 @@ struct WorkoutSessionView: View {
             HStack(alignment: .top, spacing: 14) {
                 Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
-                    .foregroundStyle(isCompleted ? .tint : .secondary)
+                    .foregroundStyle(\n                        isCompleted\n                            ? AnyShapeStyle(.tint)\n                            : AnyShapeStyle(.secondary)\n                    )
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(exercise.name)
