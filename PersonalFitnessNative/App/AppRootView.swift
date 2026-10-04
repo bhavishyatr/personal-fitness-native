@@ -1,49 +1,18 @@
 import SwiftUI
 
 struct AppRootView: View {
-    private enum AppTab: Hashable {
-        case today
-        case running
-        case workouts
-    }
-
-    @State private var selectedTab: AppTab
-
+    @State private var store = PerformanceStore()
+    @State private var selectedTab: Int
     init() {
-        let arguments = ProcessInfo.processInfo.arguments
-
-        if arguments.contains("--snapshot-running") {
-            _selectedTab = State(initialValue: .running)
-        } else if arguments.contains("--snapshot-workouts") {
-            _selectedTab = State(initialValue: .workouts)
-        } else {
-            _selectedTab = State(initialValue: .today)
-        }
+        let args = ProcessInfo.processInfo.arguments
+        _selectedTab = State(initialValue: args.contains("--snapshot-running") ? 1 : args.contains("--snapshot-strength") ? 2 : args.contains("--snapshot-history") ? 3 : 0)
     }
-
     var body: some View {
         TabView(selection: $selectedTab) {
-            TodayStepsView()
-                .tabItem {
-                    Label("Today", systemImage: "figure.walk")
-                }
-                .tag(AppTab.today)
-
-            RunningDashboardView()
-                .tabItem {
-                    Label("Running", systemImage: "figure.run")
-                }
-                .tag(AppTab.running)
-
-            WorkoutLibraryView()
-                .tabItem {
-                    Label("Workouts", systemImage: "dumbbell.fill")
-                }
-                .tag(AppTab.workouts)
+            PerformanceHome(store: store).tabItem { Label("Overview", systemImage: "chart.bar.fill") }.tag(0)
+            NavigationStack { ActivityDashboard(store: store, kind: .running) }.tabItem { Label("Running", systemImage: "figure.run") }.tag(1)
+            NavigationStack { ActivityDashboard(store: store, kind: .strength) }.tabItem { Label("Strength", systemImage: "dumbbell.fill") }.tag(2)
+            PerformanceHistory(store: store).tabItem { Label("History", systemImage: "clock") }.tag(3)
         }
     }
-}
-
-#Preview {
-    AppRootView()
 }

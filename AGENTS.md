@@ -16,4 +16,4 @@ Personal Fitness Native is a native iOS fitness app. Keep the product Apple-firs
 - Preserve accessibility labels for primary metrics and controls.
 
 ## Current milestone
-Render the first iPhone app and show the current day's step total from HealthKit.
+Show past performance grouped by workout type. Surface relevant records and historical changes, not plans or coaching. Never display distance metrics for strength; withhold unsupported records and explain missing data.

@@ -1,42 +1,34 @@
 # Personal Fitness Native
 
-A native iOS fitness app built with SwiftUI and HealthKit.
+A SwiftUI and HealthKit performance history hub. Review recorded activity, personal records, and changes over time, grouped by workout type. The app does not prescribe training plans or coaching.
 
-## Milestone 1
+## Performance dashboards
 
-The first screen displays:
+- **Overview:** activity totals, workout dashboard directory, recent sessions.
+- **Running:** longest distance/duration, climbing when recorded, best whole runs near 1–4 miles, and separate fastest continuous 1–4 mile efforts.
+- **Strength:** session frequency, duration and weekly activity. Exercise-level weights, reps, sets and equipment are not supplied by the current import; lifting records are withheld rather than inferred.
+- **History:** searchable sessions with date, source, environment and relevant measurements.
+- Walking, hiking, cycling, swimming, rowing, yoga, Pilates, HIIT, badminton and other activity dashboards are available through Overview. Distance appears only for distance-based activities.
+- Dashboard period filters: last 30 days, last 365 days, all time. Weekly duration charts and previous-30-day session comparisons. Records open calculation details and the source workout.
+- Indoor, outdoor and unspecified-environment records are calculated separately. Records are best *accessible recorded* performances, not certified race results.
 
-- today's date
-- today's step count from Apple Health
-- progress toward a 10,000-step daily goal
-- pull-to-refresh
+## Running record definitions
 
-If HealthKit has no step samples, the app still renders and displays `0` steps.
+Whole-run records use active workout duration for complete runs within ±0.15 mile of the target. Actual distance is shown in session details. These approximate-distance runs are not exact mile records.
 
-## Stack
+Continuous efforts use workout-associated distance samples and linear interpolation, considering both start and end sample boundaries. They use elapsed time including pauses. Results are labeled estimates. Samples with invalid values, overlaps, intervals or gaps above 30 seconds, or totals differing from the workout distance by more than 2% are excluded. Partial data is never extrapolated or scaled to fill the workout. Denied access and absent samples can both yield no records.
 
-- Swift
-- SwiftUI
-- Observation (`@Observable`)
-- Swift Concurrency
-- HealthKit
-- XcodeGen
-- GitHub Actions using the `xcode-27` runner
+## Browser-only development
 
-## Browser-only development workflow
+1. Edit Swift source in GitHub and open a PR targeting `main`, or push to `main`.
+2. **Actions → iOS Build and Render → Run workflow** also starts a manual run.
+3. CI runs analytics checks, generates the Xcode project with XcodeGen, and builds on `xcode-27` with Swift 6.
+4. CI boots an iPhone Simulator and captures Overview, Running, Strength and History.
+5. Open the completed run and download **Artifacts → iphone-render**. It contains four PNG files, retained for 30 days. Re-run if an artifact has expired.
 
-1. Work on source code in GitHub / with an AI coding assistant.
-2. Push to `main` or open a pull request.
-3. GitHub Actions generates the Xcode project.
-4. CI builds the native app for an iPhone Simulator.
-5. CI boots an iPhone Simulator, launches the app, and captures a screenshot.
-6. Open the workflow run in GitHub and download the `iphone-render` artifact to see the rendered app entirely from your browser.
-7. Use a browser-accessible cloud Mac only when interactive simulator debugging is needed.
-8. On a real iPhone, grant Apple Health read access to see real step data.
+`--ui-snapshot` uses sample data and skips HealthKit permission prompts. `--snapshot-running`, `--snapshot-strength` and `--snapshot-history` choose the launch tab; default is Overview. Normal launches read Apple Health on device. Screenshots are render smoke checks, not assertions about every UI interaction.
 
-The CI screenshot uses a launch-only sample step count so the HealthKit permission sheet does not block the automated render. Normal app launches always use HealthKit.
-
-## Generate the project on a Mac
+## Local development
 
 ```bash
 brew install xcodegen
@@ -44,4 +36,15 @@ xcodegen generate
 open PersonalFitnessNative.xcodeproj
 ```
 
-Select an iPhone simulator and Run.
+Select an iPhone simulator and run. A physical iPhone with Health permissions is required to validate real workout import.
+
+Run the standalone calculation checks on a Mac:
+
+```bash
+swiftc PersonalFitnessNative/Features/Performance/PerformanceModels.swift Tests/PerformanceMathTests.swift -o /tmp/performance-tests
+/tmp/performance-tests
+```
+
+## Current data limits
+
+Strength exercise logs, swimming stroke/pool classification, cycling power/cadence, rowing splits, routes, and heart-rate series are not imported. Relevant dashboards explicitly state these limits. Swimming speed records are withheld until comparable stroke and pool context is available. HealthKit stays on device; no backend is used. No cross-source duplicate detection is currently performed.
