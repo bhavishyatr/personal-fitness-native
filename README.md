@@ -26,7 +26,7 @@ Continuous efforts use workout-associated distance samples and linear interpolat
 4. CI boots an iPhone Simulator and captures Overview, Running, Strength and History.
 5. Open the completed run and download **Artifacts → iphone-render**. It contains four PNG files, retained for 30 days. Re-run if an artifact has expired.
 
-`--ui-snapshot` uses sample data and skips HealthKit permission prompts. `--snapshot-running`, `--snapshot-strength` and `--snapshot-history` choose the launch tab; default is Overview. Normal launches read Apple Health on device. Screenshots are render smoke checks, not assertions about every UI interaction.
+`--ui-snapshot` uses sample data and skips HealthKit permission prompts. `--snapshot-running`, `--snapshot-strength` and `--snapshot-history` choose the launch tab; default is Overview. Normal launches read Apple Health on device. Screenshot capture retries until Vision text recognition confirms the expected page title and content. These are render smoke checks, not assertions about every UI interaction.
 
 ## Local development
 

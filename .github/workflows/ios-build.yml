@@ -105,13 +105,24 @@ jobs:
           xcrun simctl bootstatus "$DEVICE_UDID" -b
           xcrun simctl install "$DEVICE_UDID" "$DERIVED_DATA/Build/Products/Debug-iphonesimulator/PersonalFitnessNative.app"
 
+          swiftc Tests/VerifyScreenshot.swift -o /tmp/verify-screenshot
           mkdir -p screenshots
           for tab in overview running strength history; do
             xcrun simctl terminate "$DEVICE_UDID" "$BUNDLE_ID" || true
             xcrun simctl launch "$DEVICE_UDID" "$BUNDLE_ID" --ui-snapshot "--snapshot-$tab"
-            sleep 3
-            xcrun simctl io "$DEVICE_UDID" screenshot "screenshots/personal-fitness-$tab.png"
-            test -s "screenshots/personal-fitness-$tab.png"
+            verified=false
+            for attempt in 1 2 3 4 5 6; do
+              sleep 5
+              xcrun simctl io "$DEVICE_UDID" screenshot "screenshots/personal-fitness-$tab.png"
+              if /tmp/verify-screenshot "screenshots/personal-fitness-$tab.png" "$tab"; then
+                verified=true
+                break
+              fi
+            done
+            if [[ "$verified" != true ]]; then
+              echo "Expected $tab page did not render after six attempts"
+              exit 1
+            fi
           done
 
       - name: Upload rendered iPhone screenshots
