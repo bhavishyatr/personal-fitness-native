@@ -39,9 +39,9 @@ struct PerformanceHome: View {
 }
 
 enum PerformancePeriod: String, CaseIterable, Identifiable {
-    case month = "30 days", year = "Year", all = "All time"
+    case month = "30 days", year = "Year", all = "All time", custom = "Custom"
     var id: String { rawValue }
-    var days: Int? { switch self { case .month: 30; case .year: 365; case .all: nil } }
+    var days: Int? { switch self { case .month: 30; case .year: 365; case .all, .custom: nil } }
 }
 
 struct ActivityDashboard: View {
@@ -49,8 +49,15 @@ struct ActivityDashboard: View {
     let kind: ActivityKind
     @State private var period: PerformancePeriod = .all
     @State private var environment = "All"
+    @State private var startDate = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+    @State private var endDate = Date()
     private var all: [PerformanceSession] { store.sessions.filter { $0.kind == kind && (environment == "All" || $0.environment == environment) } }
     private var sessions: [PerformanceSession] {
+        if period == .custom {
+            let start = Calendar.current.startOfDay(for: startDate)
+            let end = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: endDate))!
+            return all.filter { $0.date >= start && $0.date < end }
+        }
         guard let days = period.days, let start = Calendar.current.date(byAdding: .day, value: -days, to: Date()) else { return all }
         return all.filter { $0.date >= start }
     }
@@ -64,6 +71,10 @@ struct ActivityDashboard: View {
         List {
             Section {
                 Picker("Period", selection: $period) { ForEach(PerformancePeriod.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
+                if period == .custom {
+                    DatePicker("From", selection: $startDate, in: ...endDate, displayedComponents: .date)
+                    DatePicker("Through", selection: $endDate, in: startDate...Date(), displayedComponents: .date)
+                }
                 Picker("Environment", selection: $environment) { ForEach(["All", "Outdoor", "Indoor", "Unspecified"], id: \.self) { Text($0).tag($0) } }
                 LabeledContent("Sessions", value: "\(sessions.count)")
                 LabeledContent("Total active time", value: PerformanceMath.time(sessions.reduce(0) { $0 + $1.duration }))
@@ -83,12 +94,6 @@ struct ActivityDashboard: View {
                 }
                 Text(comparison).font(.subheadline)
             }
-            Section("Activity over time") {
-                Chart(weekly, id: \.date) { point in
-                    BarMark(x: .value("Week", point.date, unit: .weekOfYear), y: .value("Minutes", point.minutes))
-                }.frame(height: 160).accessibilityLabel("Weekly workout minutes for \(kind.rawValue)")
-                Text("Recorded active minutes per week").font(.caption).foregroundStyle(.secondary)
-            }
             Section("Best recorded · \(period.rawValue)") {
                 ForEach(records, id: \.uniqueKey) { record in
                     NavigationLink { RecordDetail(record: record) } label: {
@@ -100,6 +105,18 @@ struct ActivityDashboard: View {
                     }
                 }
                 if records.isEmpty { Text("No records available for this selection.") }
+            }
+            Section("Activity over time") {
+                Chart(weekly, id: \.date) { point in
+                    BarMark(x: .value("Week", point.date, unit: .weekOfYear), y: .value("Minutes", point.minutes))
+                }.frame(height: 160).accessibilityLabel("Weekly workout minutes for \(kind.rawValue)")
+                Text("Recorded active minutes per week").font(.caption).foregroundStyle(.secondary)
+                if kind.hasDistance {
+                    Chart(weekly, id: \.date) { point in
+                        BarMark(x: .value("Week", point.date, unit: .weekOfYear), y: .value("Distance", point.meters / distanceUnit))
+                    }.frame(height: 140).accessibilityLabel("Weekly recorded distance")
+                    Text("Recorded distance per week (\(distanceUnit == 1 ? "meters" : "miles"))").font(.caption).foregroundStyle(.secondary)
+                }
             }
             Section("Data coverage") {
                 Text(coverage).font(.footnote).foregroundStyle(.secondary)
@@ -124,8 +141,9 @@ struct ActivityDashboard: View {
     }
     private var weekly: [WeekMinutes] {
         let grouped = Dictionary(grouping: sessions) { Calendar.current.dateInterval(of: .weekOfYear, for: $0.date)?.start ?? $0.date }
-        return grouped.map { WeekMinutes(date: $0.key, minutes: $0.value.reduce(0) { $0 + $1.duration / 60 }) }.sorted { $0.date < $1.date }
+        return grouped.map { WeekMinutes(date: $0.key, minutes: $0.value.reduce(0) { $0 + $1.duration / 60 }, meters: $0.value.compactMap(\.distance).reduce(0, +)) }.sorted { $0.date < $1.date }
     }
+    private var distanceUnit: Double { [.swimming, .rowing].contains(kind) ? 1 : PerformanceMath.mile }
     private var coverage: String {
         switch kind {
         case .strength: "Exercise-level weights, reps, sets, and equipment are not available from this app's workout import. Lifting records need those details; only recorded session activity is shown."
@@ -138,16 +156,25 @@ struct ActivityDashboard: View {
         }
     }
 }
-private struct WeekMinutes { let date: Date; let minutes: Double }
+private struct WeekMinutes { let date: Date; let minutes: Double; let meters: Double }
 private extension PerformanceRecord { var uniqueKey: String { "\(id)-\(session.environment)" } }
 
 struct PerformanceHistory: View {
     @Bindable var store: PerformanceStore
     @State private var search = ""
+    @State private var kindFilter = "All"
+    private var filtered: [PerformanceSession] {
+        store.sessions.filter { (kindFilter == "All" || $0.kind.rawValue == kindFilter) && (search.isEmpty || $0.kind.rawValue.localizedCaseInsensitiveContains(search) || $0.source.localizedCaseInsensitiveContains(search)) }
+    }
     var body: some View {
         NavigationStack {
             List {
-                ForEach(store.sessions.filter { search.isEmpty || $0.kind.rawValue.localizedCaseInsensitiveContains(search) || $0.source.localizedCaseInsensitiveContains(search) }) { SessionLink(session: $0) }
+                Picker("Workout type", selection: $kindFilter) {
+                    Text("All").tag("All")
+                    ForEach(ActivityKind.allCases) { Text($0.rawValue).tag($0.rawValue) }
+                }
+                NavigationLink("Compare two sessions") { SessionComparison(sessions: store.sessions) }
+                ForEach(filtered) { SessionLink(session: $0) }
                 HealthStatus(store: store)
             }
             .navigationTitle("History")
@@ -215,5 +242,49 @@ struct HealthStatus: View {
                 Text("No accessible workouts. Check Apple Health read access and recorded workouts, then pull to refresh. Denied access and missing data can both appear empty.")
             }
         }
+    }
+}
+
+struct SessionComparison: View {
+    let sessions: [PerformanceSession]
+    @State private var firstID: UUID?
+    @State private var secondID: UUID?
+    private var first: PerformanceSession? { sessions.first { $0.id == firstID } }
+    private var second: PerformanceSession? { sessions.first { $0.id == secondID } }
+    private var candidates: [PerformanceSession] {
+        guard let first else { return [] }
+        return sessions.filter { $0.id != first.id && $0.kind == first.kind && $0.environment == first.environment }
+    }
+    var body: some View {
+        List {
+            Picker("First session", selection: $firstID) {
+                Text("Choose session").tag(Optional<UUID>.none)
+                ForEach(sessions) { Text(label($0)).tag(Optional($0.id)) }
+            }.onChange(of: firstID) { _, _ in secondID = nil }
+            if let first {
+                Picker("Second session", selection: $secondID) {
+                    Text("Choose session").tag(Optional<UUID>.none)
+                    ForEach(candidates) { Text(label($0)).tag(Optional($0.id)) }
+                }
+                Text("Comparisons use the same workout type and recorded environment. Route, conditions and equipment may differ.").font(.footnote).foregroundStyle(.secondary)
+                if let second {
+                    Section("Active duration") {
+                        LabeledContent("First", value: PerformanceMath.time(first.duration))
+                        LabeledContent("Second", value: PerformanceMath.time(second.duration))
+                        LabeledContent("Difference", value: PerformanceMath.time(abs(first.duration - second.duration)))
+                    }
+                    if first.kind.hasDistance, let a = first.distance, let b = second.distance {
+                        Section("Recorded distance") {
+                            LabeledContent("First", value: PerformanceMath.distance(a, kind: first.kind))
+                            LabeledContent("Second", value: PerformanceMath.distance(b, kind: first.kind))
+                        }
+                    }
+                    Section("Original sessions") { SessionLink(session: first); SessionLink(session: second) }
+                } else if candidates.isEmpty { Text("No other session with matching workout type and environment.") }
+            }
+        }.navigationTitle("Compare sessions")
+    }
+    private func label(_ session: PerformanceSession) -> String {
+        "\(session.kind.rawValue) · \(session.date.formatted(date: .abbreviated, time: .shortened)) · \(PerformanceMath.time(session.duration))"
     }
 }

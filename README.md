@@ -9,7 +9,7 @@ A SwiftUI and HealthKit performance history hub. Review recorded activity, perso
 - **Strength:** session frequency, duration and weekly activity. Exercise-level weights, reps, sets and equipment are not supplied by the current import; lifting records are withheld rather than inferred.
 - **History:** searchable sessions with date, source, environment and relevant measurements.
 - Walking, hiking, cycling, swimming, rowing, yoga, Pilates, HIIT, badminton and other activity dashboards are available through Overview. Distance appears only for distance-based activities.
-- Dashboard period filters: last 30 days, last 365 days, all time. Weekly duration charts and previous-30-day session comparisons. Records open calculation details and the source workout.
+- Dashboard period filters: last 30 days, last 365 days, all time, custom date ranges. Weekly duration and distance charts, previous-30-day session comparisons, and side-by-side comparison of sessions with matching workout type and environment. Records open calculation details and the source workout.
 - Indoor, outdoor and unspecified-environment records are calculated separately. Records are best *accessible recorded* performances, not certified race results.
 
 ## Running record definitions
