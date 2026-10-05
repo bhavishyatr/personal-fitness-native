@@ -98,10 +98,16 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+      - name: Boot shared simulator
+        shell: bash
+        run: |
+          xcrun simctl boot "$DEVICE_UDID" || true
+          xcrun simctl bootstatus "$DEVICE_UDID" -b
+
       - name: Test core UI interactions
         shell: bash
         run: |
-          xcodebuild -project "$PROJECT" -scheme "$SCHEME" -destination "platform=iOS Simulator,id=$DEVICE_UDID" -derivedDataPath "$DERIVED_DATA" CODE_SIGNING_ALLOWED=NO test
+          xcodebuild -project "$PROJECT" -scheme "$SCHEME" -destination "platform=iOS Simulator,id=$DEVICE_UDID" -derivedDataPath "$DERIVED_DATA" CODE_SIGNING_ALLOWED=NO -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 test
 
       - name: Launch app and capture iPhone screenshots
         shell: bash
