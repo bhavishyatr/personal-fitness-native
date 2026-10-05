@@ -40,8 +40,13 @@ final class PerformanceUITests: XCTestCase {
         app.launchArguments = ["--ui-snapshot", "--snapshot-calendar"]
         app.launch()
         XCTAssertTrue(app.navigationBars["Activity calendar"].waitForExistence(timeout: 20))
+        let currentMonth = Date().formatted(.dateTime.month(.wide).year())
+        let previousMonth = Calendar.current.date(byAdding: .month, value: -1, to: Date())!.formatted(.dateTime.month(.wide).year())
+        XCTAssertTrue(app.staticTexts[currentMonth].exists)
         app.buttons["Previous month"].tap()
+        XCTAssertTrue(app.staticTexts[previousMonth].waitForExistence(timeout: 5))
         app.buttons["Next month"].tap()
+        XCTAssertTrue(app.staticTexts[currentMonth].waitForExistence(timeout: 5))
         app.terminate()
         app.launchArguments = ["--ui-snapshot", "--snapshot-recap"]
         app.launch()

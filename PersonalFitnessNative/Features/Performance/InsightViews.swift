@@ -133,7 +133,7 @@ struct MonthNavigation: View {
             Text(month.formatted(.dateTime.month(.wide).year())).font(.headline)
             Spacer()
             Button { change(1) } label: { Image(systemName: "chevron.right") }.accessibilityLabel("Next month")
-        }
+        }.buttonStyle(.borderless)
     }
     private func change(_ count: Int) { month = Calendar.current.date(byAdding: .month, value: count, to: Calendar.current.dateInterval(of: .month, for: month)!.start)! }
 }
