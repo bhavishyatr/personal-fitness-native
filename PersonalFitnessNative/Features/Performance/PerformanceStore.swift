@@ -5,7 +5,23 @@ import Observation
 @MainActor
 @Observable
 final class PerformanceStore {
-    var sessions: [PerformanceSession] = []
+    var allSessions: [PerformanceSession] = []
+    private(set) var excludedIDs: Set<UUID> = []
+    private(set) var recordSeries: [RecordSeries] = []
+    var sessions: [PerformanceSession] { InsightMath.eligible(allSessions, excluding: excludedIDs) }
+    init() {
+        if !ProcessInfo.processInfo.arguments.contains("--ui-snapshot") {
+            excludedIDs = Set((UserDefaults.standard.stringArray(forKey: "excluded-performance-sessions") ?? []).compactMap(UUID.init(uuidString:)))
+        }
+    }
+    func isExcluded(_ id: UUID) -> Bool { excludedIDs.contains(id) }
+    func setExcluded(_ excluded: Bool, id: UUID) {
+        if excluded { excludedIDs.insert(id) } else { excludedIDs.remove(id) }
+        if !ProcessInfo.processInfo.arguments.contains("--ui-snapshot") {
+            UserDefaults.standard.set(excludedIDs.map(\.uuidString).sorted(), forKey: "excluded-performance-sessions")
+        }
+        recordSeries = InsightMath.series(sessions)
+    }
     var loading = false
     var message: String?
     private var loaded = false
@@ -17,7 +33,8 @@ final class PerformanceStore {
         loading = true
         defer { loading = false }
         if ProcessInfo.processInfo.arguments.contains("--ui-snapshot") {
-            sessions = Self.samples
+            allSessions = Self.samples
+            recordSeries = InsightMath.series(sessions)
             loaded = true
             return
         }
@@ -43,7 +60,8 @@ final class PerformanceStore {
                 }
                 next.append(session)
             }
-            sessions = next
+            allSessions = next
+            recordSeries = InsightMath.series(sessions)
             loaded = true
             message = failedSamples > 0 ? "Detailed samples could not be loaded for \(failedSamples) runs. Whole-session history is still available. Pull to refresh to retry." : nil
         } catch {
@@ -114,7 +132,7 @@ final class PerformanceStore {
     }
 
     static var samples: [PerformanceSession] {
-        ActivityKind.allCases.enumerated().flatMap { index, kind in
+        var result = ActivityKind.allCases.enumerated().flatMap { index, kind in
             (0..<6).map { n in
                 let distance = kind.hasDistance ? Double(n + 1) * PerformanceMath.mile : nil
                 let duration = kind.hasDistance ? Double(n + 1) * (520 - Double(n) * 10) : Double(20 + n * 5) * 60
@@ -130,5 +148,9 @@ final class PerformanceStore {
                 return session
             }
         }.sorted { $0.date > $1.date }
+        if let run = result.first(where: { $0.kind == .running }) {
+            result.append(PerformanceSession(id: UUID(), kind: run.kind, date: run.date.addingTimeInterval(10), duration: run.duration, distance: run.distance, source: "Second sample source", environment: run.environment, points: run.points))
+        }
+        return result.sorted { $0.date > $1.date }
     }
 }

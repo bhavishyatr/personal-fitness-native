@@ -41,10 +41,22 @@ Select an iPhone simulator and run. A physical iPhone with Health permissions is
 Run the standalone calculation checks on a Mac:
 
 ```bash
-swiftc PersonalFitnessNative/Features/Performance/PerformanceModels.swift Tests/PerformanceMathTests.swift -o /tmp/performance-tests
+swiftc PersonalFitnessNative/Features/Performance/PerformanceModels.swift PersonalFitnessNative/Features/Performance/PerformanceInsights.swift Tests/PerformanceMathTests.swift -o /tmp/performance-tests
 /tmp/performance-tests
 ```
 
 ## Current data limits
 
 Strength exercise logs, swimming stroke/pool classification, cycling power/cadence, rowing splits, routes, and heart-rate series are not imported. Relevant dashboards explicitly state these limits. Swimming speed records are withheld until comparable stroke and pool context is available. HealthKit stays on device; no backend is used. No cross-source duplicate detection is currently performed.
+
+## Insights, rankings, recaps and data quality
+
+Insights groups performance highlights, a record directory, monthly recaps, an activity calendar and possible duplicate review. Each metric has a chronological record progression and top 10 performances, separated by workout type and environment. Each workout contributes at most one result per metric. Ties retain the earlier result; the first benchmark is labeled separately from later improvements. Detail pages link to original workouts and calculation notes.
+
+Monthly recaps show sessions, active days, duration, per-activity distance and new record improvements, with source workouts. The current month is to date; the previous comparison uses its full calendar month. Calendar weeks follow device locale, and dots indicate included activity without rating rest days.
+
+Possible duplicates have the same activity/environment, start within 60 seconds and durations within 2% (minimum 5 seconds). Distance-based activities also require recorded distances within 2% (minimum 10 meters). Missing distance is insufficient evidence. Generic Other workouts are not flagged because their underlying sports may differ. Suggestions are not proof; nothing is automatically excluded.
+
+Turn off **Include in performance analytics** in session details or Data quality to exclude a session. Exclusions update records, charts, highlights, recaps and calendar while preserving original History and Apple Health data. Excluded UUIDs are saved locally with UserDefaults and survive refreshes and normal app restarts; restoring the toggle reverses the exclusion. Snapshot mode uses temporary exclusions and never changes saved choices. Exclusions do not sync across devices.
+
+CI runs calculation tests and UI tests for Insights navigation, progression, calendar/recap launch and reversible exclusions. `iphone-render` includes the original tabs plus Insights, Records, Recap, Calendar and Duplicates. Snapshot launch flags are `--snapshot-insights`, `--snapshot-records`, `--snapshot-recap`, `--snapshot-calendar` and `--snapshot-duplicates`.

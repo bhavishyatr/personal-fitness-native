@@ -26,6 +26,11 @@ struct PerformanceHome: View {
                         }
                     }
                 }
+                Section("Explore performance") {
+                    NavigationLink("Record progression & top 10") { RecordDirectory(store: store) }
+                    NavigationLink("Monthly recap") { MonthlyRecap(store: store) }
+                    NavigationLink("Activity calendar") { ConsistencyCalendar(store: store) }
+                }
                 Section("Recent activity") {
                     ForEach(Array(store.sessions.prefix(5))) { session in SessionLink(session: session) }
                 }
@@ -118,6 +123,12 @@ struct ActivityDashboard: View {
                     Text("Recorded distance per week (\(distanceUnit == 1 ? "meters" : "miles"))").font(.caption).foregroundStyle(.secondary)
                 }
             }
+            Section("Record progression & rankings") {
+                ForEach(store.recordSeries.filter { $0.kind == kind && (environment == "All" || $0.environment == environment) }) { series in
+                    NavigationLink(series.title + " · " + series.environment) { SeriesDetail(series: series) }
+                }
+                Text("Progression and top 10 use all included recorded history; dashboard date filters apply to the summary above.").font(.caption).foregroundStyle(.secondary)
+            }
             Section("Data coverage") {
                 Text(coverage).font(.footnote).foregroundStyle(.secondary)
                 if kind == .running {
@@ -164,7 +175,7 @@ struct PerformanceHistory: View {
     @State private var search = ""
     @State private var kindFilter = "All"
     private var filtered: [PerformanceSession] {
-        store.sessions.filter { (kindFilter == "All" || $0.kind.rawValue == kindFilter) && (search.isEmpty || $0.kind.rawValue.localizedCaseInsensitiveContains(search) || $0.source.localizedCaseInsensitiveContains(search)) }
+        store.allSessions.filter { (kindFilter == "All" || $0.kind.rawValue == kindFilter) && (search.isEmpty || $0.kind.rawValue.localizedCaseInsensitiveContains(search) || $0.source.localizedCaseInsensitiveContains(search)) }
     }
     var body: some View {
         NavigationStack {
@@ -185,20 +196,25 @@ struct PerformanceHistory: View {
     }
 }
 struct SessionLink: View {
+    @Environment(PerformanceStore.self) private var store
     let session: PerformanceSession
     var body: some View {
         NavigationLink { SessionDetail(session: session) } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Label(session.kind.rawValue, systemImage: session.kind.icon).font(.headline)
+                if store.isExcluded(session.id) { Text("Excluded from analytics").font(.caption).foregroundStyle(.orange) }
                 Text("\(session.date.formatted(date: .abbreviated, time: .shortened)) · \(PerformanceMath.time(session.duration))").font(.caption).foregroundStyle(.secondary)
             }
         }
     }
 }
 struct SessionDetail: View {
+    @Environment(PerformanceStore.self) private var store
     let session: PerformanceSession
     var body: some View {
         List {
+            ExclusionControl(store: store, session: session)
+            Text("Excluding keeps this original session in History but removes it from performance calculations.").font(.caption).foregroundStyle(.secondary)
             LabeledContent("Date", value: session.date.formatted())
             LabeledContent("Active duration", value: PerformanceMath.time(session.duration))
             if session.kind.hasDistance, let distance = session.distance {
@@ -215,11 +231,13 @@ struct SessionDetail: View {
     }
 }
 struct RecordDetail: View {
+    @Environment(PerformanceStore.self) private var store
     let record: PerformanceRecord
     var body: some View {
         List {
             Section {
                 Text(record.title).font(.title2.bold())
+                if store.isExcluded(record.session.id) { Text("This source workout is now excluded from analytics.").foregroundStyle(.orange) }
                 Text(record.value).font(.largeTitle.bold()).foregroundStyle(.tint)
                 Text(record.explanation)
                 if let previous = record.previous { Text(previous) }
@@ -227,6 +245,9 @@ struct RecordDetail: View {
                     LabeledContent("Segment begins", value: "\(PerformanceMath.time(effort.startSeconds)) after start")
                     LabeledContent("Segment ends", value: "\(PerformanceMath.time(effort.endSeconds)) after start")
                 }
+            }
+            if let series = store.recordSeries.first(where: { $0.metricID == record.id && $0.kind == record.session.kind && $0.environment == record.session.environment }) {
+                NavigationLink("Record progression & top 10") { SeriesDetail(series: series) }
             }
             Section("Source workout") { SessionLink(session: record.session) }
         }.navigationTitle("Record details")
