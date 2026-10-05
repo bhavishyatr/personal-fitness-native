@@ -35,6 +35,17 @@ targets:
     dependencies:
       - sdk: HealthKit.framework
 
+  PersonalFitnessNativeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Tests/UI
+    dependencies:
+      - target: PersonalFitnessNative
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+
 schemes:
   PersonalFitnessNative:
     build:
@@ -44,5 +55,7 @@ schemes:
       config: Debug
     test:
       config: Debug
+      targets:
+        - PersonalFitnessNativeUITests
     archive:
       config: Release

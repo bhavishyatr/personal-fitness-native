@@ -39,7 +39,7 @@ jobs:
 
       - name: Test performance analytics
         run: |
-          swiftc PersonalFitnessNative/Features/Performance/PerformanceModels.swift Tests/PerformanceMathTests.swift -o /tmp/performance-tests
+          swiftc PersonalFitnessNative/Features/Performance/PerformanceModels.swift PersonalFitnessNative/Features/Performance/PerformanceInsights.swift Tests/PerformanceMathTests.swift -o /tmp/performance-tests
           /tmp/performance-tests
 
       - name: Generate Xcode project
@@ -87,6 +87,7 @@ jobs:
           echo "DEVICE_UDID=$DEVICE_UDID" >> "$GITHUB_ENV"
 
       - name: Build for iPhone Simulator
+        id: build
         shell: bash
         run: |
           xcodebuild \
@@ -98,7 +99,20 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+      - name: Boot shared simulator
+        shell: bash
+        run: |
+          xcrun simctl boot "$DEVICE_UDID" || true
+          xcrun simctl bootstatus "$DEVICE_UDID" -b
+
+      - name: Test core UI interactions
+        shell: bash
+        run: |
+          xcodebuild -project "$PROJECT" -scheme "$SCHEME" -destination "platform=iOS Simulator,id=$DEVICE_UDID" -derivedDataPath "$DERIVED_DATA" CODE_SIGNING_ALLOWED=NO -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 -collect-test-diagnostics never test
+
       - name: Launch app and capture iPhone screenshots
+        id: render
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         shell: bash
         run: |
           xcrun simctl boot "$DEVICE_UDID" || true
@@ -108,7 +122,7 @@ jobs:
           xcrun simctl ui "$DEVICE_UDID" appearance light
           swiftc Tests/VerifyScreenshot.swift -o /tmp/verify-screenshot
           mkdir -p screenshots
-          for tab in overview running strength history; do
+          for tab in overview running strength history insights records recap calendar duplicates; do
             xcrun simctl terminate "$DEVICE_UDID" "$BUNDLE_ID" || true
             xcrun simctl launch "$DEVICE_UDID" "$BUNDLE_ID" --ui-snapshot "--snapshot-$tab"
             verified=false
@@ -127,6 +141,7 @@ jobs:
           done
 
       - name: Upload rendered iPhone screenshots
+        if: ${{ !cancelled() && steps.render.outcome == 'success' }}
         uses: actions/upload-artifact@v7
         with:
           name: iphone-render

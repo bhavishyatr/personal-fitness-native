@@ -5,7 +5,7 @@ struct AppRootView: View {
     @State private var selectedTab: Int
     init() {
         let args = ProcessInfo.processInfo.arguments
-        _selectedTab = State(initialValue: args.contains("--snapshot-running") ? 1 : args.contains("--snapshot-strength") ? 2 : args.contains("--snapshot-history") ? 3 : 0)
+        _selectedTab = State(initialValue: args.contains("--snapshot-insights") || args.contains("--snapshot-calendar") || args.contains("--snapshot-recap") || args.contains("--snapshot-duplicates") || args.contains("--snapshot-records") ? 4 : args.contains("--snapshot-running") ? 1 : args.contains("--snapshot-strength") ? 2 : args.contains("--snapshot-history") ? 3 : 0)
     }
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -13,6 +13,7 @@ struct AppRootView: View {
             NavigationStack { ActivityDashboard(store: store, kind: .running) }.tabItem { Label("Running", systemImage: "figure.run") }.tag(1)
             NavigationStack { ActivityDashboard(store: store, kind: .strength) }.tabItem { Label("Strength", systemImage: "dumbbell.fill") }.tag(2)
             PerformanceHistory(store: store).tabItem { Label("History", systemImage: "clock") }.tag(3)
-        }
+            InsightsHome(store: store).tabItem { Label("Insights", systemImage: "sparkles") }.tag(4)
+        }.environment(store)
     }
 }
