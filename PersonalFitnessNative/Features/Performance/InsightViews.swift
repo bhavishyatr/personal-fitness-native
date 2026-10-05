@@ -249,13 +249,11 @@ struct DataQualityView: View {
             }
             Section("Possible duplicate pairs · \(pairs.count)") {
                 ForEach(pairs) { pair in
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(pair.first.kind.rawValue).font(.headline)
-                        SessionLink(session: pair.first)
-                        ExclusionControl(store: store, session: pair.first)
-                        SessionLink(session: pair.second)
-                        ExclusionControl(store: store, session: pair.second)
-                    }
+                    Text(pair.first.kind.rawValue).font(.headline)
+                    SessionLink(session: pair.first)
+                    ExclusionControl(store: store, session: pair.first)
+                    SessionLink(session: pair.second)
+                    ExclusionControl(store: store, session: pair.second)
                 }
                 if pairs.isEmpty { Text("No possible duplicates found with these rules.") }
             }

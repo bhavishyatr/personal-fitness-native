@@ -23,6 +23,7 @@ final class PerformanceUITests: XCTestCase {
         let sameWorkout = app.switches.matching(identifier: identifier).firstMatch
         XCTAssertEqual(sameWorkout.value as? String, "1")
         sameWorkout.tap()
+        XCTAssertTrue(app.navigationBars["Data quality"].exists)
         let excluded = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "0"), object: sameWorkout)
         XCTAssertEqual(XCTWaiter.wait(for: [excluded], timeout: 5), .completed)
         sameWorkout.tap()
