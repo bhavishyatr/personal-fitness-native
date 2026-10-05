@@ -24,7 +24,7 @@ Continuous efforts use workout-associated distance samples and linear interpolat
 2. **Actions → iOS Build and Render → Run workflow** also starts a manual run.
 3. CI runs analytics checks, generates the Xcode project with XcodeGen, and builds on `xcode-27` with Swift 6.
 4. CI boots an iPhone Simulator and captures Overview, Running, Strength and History.
-5. Open the completed run and download **Artifacts → iphone-render**. It contains four PNG files, retained for 30 days. Re-run if an artifact has expired.
+5. Open the completed run and download **Artifacts → iphone-render**. It contains nine PNG files covering the four workout tabs and five Insights screens, retained for 30 days. Re-run if an artifact has expired.
 
 `--ui-snapshot` uses sample data and skips HealthKit permission prompts. `--snapshot-running`, `--snapshot-strength` and `--snapshot-history` choose the launch tab; default is Overview. Normal launches read Apple Health on device. Screenshot capture retries until a pixel check confirms nonblank page content in light appearance, excluding status and tab bars. These are render smoke checks, not assertions about every UI interaction.
 
@@ -47,7 +47,7 @@ swiftc PersonalFitnessNative/Features/Performance/PerformanceModels.swift Person
 
 ## Current data limits
 
-Strength exercise logs, swimming stroke/pool classification, cycling power/cadence, rowing splits, routes, and heart-rate series are not imported. Relevant dashboards explicitly state these limits. Swimming speed records are withheld until comparable stroke and pool context is available. HealthKit stays on device; no backend is used. No cross-source duplicate detection is currently performed.
+Strength exercise logs, swimming stroke/pool classification, cycling power/cadence, rowing splits, routes, and heart-rate series are not imported. Relevant dashboards explicitly state these limits. Swimming speed records are withheld until comparable stroke and pool context is available. HealthKit stays on device; no backend is used. Possible duplicates are surfaced for manual review; exclusions are reversible and never delete HealthKit workouts.
 
 ## Insights, rankings, recaps and data quality
 

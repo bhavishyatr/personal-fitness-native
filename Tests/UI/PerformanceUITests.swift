@@ -8,9 +8,10 @@ final class PerformanceUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.buttons["records-link"].waitForExistence(timeout: 20))
         app.buttons["records-link"].tap()
-        let series = app.buttons["series-Running-Longest distance-Outdoor"]
+        let series = app.buttons["series-Badminton-Longest duration-Outdoor"]
         XCTAssertTrue(series.waitForExistence(timeout: 10))
         series.tap()
+        app.swipeUp()
         XCTAssertTrue(app.staticTexts["Top 10 performances"].waitForExistence(timeout: 10))
         app.terminate()
         app.launchArguments = ["--ui-snapshot", "--snapshot-duplicates"]
