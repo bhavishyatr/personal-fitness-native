@@ -21,12 +21,14 @@ final class PerformanceUITests: XCTestCase {
         XCTAssertTrue(toggle.waitForExistence(timeout: 20))
         let identifier = toggle.identifier
         let sameWorkout = app.switches.matching(identifier: identifier).firstMatch
+        print("Exclusion control before tap: \(sameWorkout.debugDescription)")
         XCTAssertEqual(sameWorkout.value as? String, "1")
-        sameWorkout.tap()
+        sameWorkout.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        print("Exclusion control after tap: \(app.debugDescription)")
         XCTAssertTrue(app.navigationBars["Data quality"].exists)
         let excluded = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "0"), object: sameWorkout)
         XCTAssertEqual(XCTWaiter.wait(for: [excluded], timeout: 5), .completed)
-        sameWorkout.tap()
+        sameWorkout.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
         let restored = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "1"), object: sameWorkout)
         XCTAssertEqual(XCTWaiter.wait(for: [restored], timeout: 5), .completed)
     }
