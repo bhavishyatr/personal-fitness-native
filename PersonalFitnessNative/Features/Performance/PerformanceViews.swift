@@ -157,9 +157,9 @@ struct ActivityDashboard: View {
     private var distanceUnit: Double { [.swimming, .rowing].contains(kind) ? 1 : PerformanceMath.mile }
     private var coverage: String {
         switch kind {
-        case .strength: "Exercise-level weights, reps, sets, and equipment are not available from this app's workout import. Lifting records need those details; only recorded session activity is shown."
+        case .strength: "Apple Health exercise sets are not imported. Open a session to manually save exercises, reps and external load on this device. Lifting records are not inferred from these entries."
         case .running: "Continuous 1–4 mile efforts require detailed distance samples. Missing, overlapping, coarse, or incomplete samples do not produce segment records. Tap a record for its calculation and original workout."
-        case .cycling: "Indoor and outdoor records are separate. Power and cadence records require detailed sensor data and are not imported yet."
+        case .cycling: "Indoor and outdoor records are separate. Open a session for recorded power and cadence samples. Sensor coverage may be incomplete; power and cadence records are not inferred."
         case .swimming: "Distance and duration are shown. Stroke and pool/open-water classification are not imported yet, so speed records are withheld."
         case .rowing: "Distance and duration are shown when recorded. Exact-distance effort and power records require detailed samples not imported yet."
         case .yoga, .pilates: "Frequency and duration describe activity. Longer sessions are not automatically better performance."
@@ -213,6 +213,10 @@ struct SessionDetail: View {
     let session: PerformanceSession
     var body: some View {
         List {
+            NavigationLink("Heart rate, route & workout details") { WorkoutDetailsView(session: session) }.accessibilityIdentifier("workout-details-link")
+            if session.kind == .strength {
+                NavigationLink("Exercise sets (manual)") { StrengthLogView(session: session) }
+            }
             ExclusionControl(store: store, session: session)
             Text("Excluding keeps this original session in History but removes it from performance calculations.").font(.caption).foregroundStyle(.secondary)
             LabeledContent("Date", value: session.date.formatted())

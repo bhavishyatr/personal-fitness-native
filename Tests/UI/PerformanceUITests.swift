@@ -34,6 +34,38 @@ final class PerformanceUITests: XCTestCase {
     }
 
     @MainActor
+    func testWorkoutSensorsAndManualSets() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-snapshot", "--snapshot-sensors"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Workout details"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.staticTexts["Recorded range"].firstMatch.waitForExistence(timeout: 10))
+        app.swipeUp()
+        app.swipeUp()
+        XCTAssertTrue(app.staticTexts["Cycling cadence"].waitForExistence(timeout: 5))
+        app.terminate()
+        app.launchArguments = ["--ui-snapshot", "--snapshot-sets"]
+        app.launch()
+        XCTAssertTrue(app.buttons["add-strength-set"].waitForExistence(timeout: 20))
+        app.buttons["add-strength-set"].tap()
+        let name = app.textFields["exercise-name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Squat")
+        app.buttons["save-strength-set"].tap()
+        XCTAssertTrue(app.buttons.containing(.staticText, identifier: "1. Squat").firstMatch.waitForExistence(timeout: 5))
+        app.buttons.containing(.staticText, identifier: "1. Squat").firstMatch.tap()
+        XCTAssertTrue(app.textFields["exercise-name"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.textFields["exercise-name"].value as? String, "Squat")
+        app.buttons["Cancel"].tap()
+        let row = app.buttons.containing(.staticText, identifier: "1. Squat").firstMatch
+        row.swipeLeft()
+        app.buttons["Delete"].tap()
+        XCTAssertTrue(app.staticTexts["No sets entered yet."].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testCalendarAndRecapLaunch() {
         continueAfterFailure = false
         let app = XCUIApplication()

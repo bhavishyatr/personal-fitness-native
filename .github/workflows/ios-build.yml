@@ -41,6 +41,8 @@ jobs:
         run: |
           swiftc PersonalFitnessNative/Features/Performance/PerformanceModels.swift PersonalFitnessNative/Features/Performance/PerformanceInsights.swift Tests/PerformanceMathTests.swift -o /tmp/performance-tests
           /tmp/performance-tests
+          swiftc PersonalFitnessNative/Features/WorkoutDetails/WorkoutDetailModels.swift Tests/WorkoutDetailTests.swift -o /tmp/workout-detail-tests
+          /tmp/workout-detail-tests
 
       - name: Generate Xcode project
         run: xcodegen generate
@@ -122,7 +124,7 @@ jobs:
           xcrun simctl ui "$DEVICE_UDID" appearance light
           swiftc Tests/VerifyScreenshot.swift -o /tmp/verify-screenshot
           mkdir -p screenshots
-          for tab in overview running strength history insights records recap calendar duplicates; do
+          for tab in overview running strength history insights records recap calendar duplicates sensors sets; do
             xcrun simctl terminate "$DEVICE_UDID" "$BUNDLE_ID" || true
             xcrun simctl launch "$DEVICE_UDID" "$BUNDLE_ID" --ui-snapshot "--snapshot-$tab"
             verified=false
