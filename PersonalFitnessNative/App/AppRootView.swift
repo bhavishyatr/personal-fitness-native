@@ -8,6 +8,15 @@ struct AppRootView: View {
         _selectedTab = State(initialValue: args.contains("--snapshot-insights") || args.contains("--snapshot-calendar") || args.contains("--snapshot-recap") || args.contains("--snapshot-duplicates") || args.contains("--snapshot-records") ? 4 : args.contains("--snapshot-running") ? 1 : args.contains("--snapshot-strength") ? 2 : args.contains("--snapshot-history") ? 3 : 0)
     }
     var body: some View {
+        if ProcessInfo.processInfo.arguments.contains("--ui-snapshot"),
+           ProcessInfo.processInfo.arguments.contains("--snapshot-sensors") || ProcessInfo.processInfo.arguments.contains("--snapshot-sets") {
+            let strength = ProcessInfo.processInfo.arguments.contains("--snapshot-sets")
+            let session = PerformanceStore.samples.first { $0.kind == (strength ? .strength : .cycling) }!
+            NavigationStack {
+                if strength { StrengthLogView(session: session) }
+                else { WorkoutDetailsView(session: session) }
+            }
+        } else {
         TabView(selection: $selectedTab) {
             PerformanceHome(store: store).tabItem { Label("Overview", systemImage: "chart.bar.fill") }.tag(0)
             NavigationStack { ActivityDashboard(store: store, kind: .running) }.tabItem { Label("Running", systemImage: "figure.run") }.tag(1)
@@ -15,5 +24,6 @@ struct AppRootView: View {
             PerformanceHistory(store: store).tabItem { Label("History", systemImage: "clock") }.tag(3)
             InsightsHome(store: store).tabItem { Label("Insights", systemImage: "sparkles") }.tag(4)
         }.environment(store)
+        }
     }
 }

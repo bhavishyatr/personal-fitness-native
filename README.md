@@ -6,7 +6,7 @@ A SwiftUI and HealthKit performance history hub. Review recorded activity, perso
 
 - **Overview:** activity totals, workout dashboard directory, recent sessions.
 - **Running:** longest distance/duration, climbing when recorded, best whole runs near 1–4 miles, and separate fastest continuous 1–4 mile efforts.
-- **Strength:** session frequency, duration and weekly activity. Exercise-level weights, reps, sets and equipment are not supplied by the current import; lifting records are withheld rather than inferred.
+- **Strength:** session frequency, duration and weekly activity. Exercise-level weights, reps, sets and equipment are not supplied by the current import; manual set logs are available in session details and lifting records are withheld rather than inferred.
 - **History:** searchable sessions with date, source, environment and relevant measurements.
 - Walking, hiking, cycling, swimming, rowing, yoga, Pilates, HIIT, badminton and other activity dashboards are available through Overview. Distance appears only for distance-based activities.
 - Dashboard period filters: last 30 days, last 365 days, all time, custom date ranges. Weekly duration and distance charts, previous-30-day session comparisons, and side-by-side comparison of sessions with matching workout type and environment. Records open calculation details and the source workout.
@@ -24,7 +24,7 @@ Continuous efforts use workout-associated distance samples and linear interpolat
 2. **Actions → iOS Build and Render → Run workflow** also starts a manual run.
 3. CI runs analytics checks, generates the Xcode project with XcodeGen, and builds on `xcode-27` with Swift 6.
 4. CI boots an iPhone Simulator and captures Overview, Running, Strength and History.
-5. Open the completed run and download **Artifacts → iphone-render**. It contains nine PNG files covering the four workout tabs and five Insights screens, retained for 30 days. Re-run if an artifact has expired.
+5. Open the completed run and download **Artifacts → iphone-render**. It contains eleven PNG files covering the four workout tabs and five Insights screens, retained for 30 days. Re-run if an artifact has expired.
 
 `--ui-snapshot` uses sample data and skips HealthKit permission prompts. `--snapshot-running`, `--snapshot-strength` and `--snapshot-history` choose the launch tab; default is Overview. Normal launches read Apple Health on device. Screenshot capture retries until a pixel check confirms nonblank page content in light appearance, excluding status and tab bars. These are render smoke checks, not assertions about every UI interaction.
 
@@ -47,7 +47,7 @@ swiftc PersonalFitnessNative/Features/Performance/PerformanceModels.swift Person
 
 ## Current data limits
 
-Strength exercise logs, swimming stroke/pool classification, cycling power/cadence, rowing splits, routes, and heart-rate series are not imported. Relevant dashboards explicitly state these limits. Swimming speed records are withheld until comparable stroke and pool context is available. HealthKit stays on device; no backend is used. Possible duplicates are surfaced for manual review; exclusions are reversible and never delete HealthKit workouts.
+Strength exercise logs, swimming stroke/pool classification and rowing splits are not imported. Heart-rate, cycling power/cadence and routes can be loaded on demand from session details. Relevant dashboards explicitly state these limits. Swimming speed records are withheld until comparable stroke and pool context is available. HealthKit stays on device; no backend is used. Possible duplicates are surfaced for manual review; exclusions are reversible and never delete HealthKit workouts.
 
 ## Insights, rankings, recaps and data quality
 
@@ -59,4 +59,14 @@ Possible duplicates have the same activity/environment, start within 60 seconds 
 
 Turn off **Include in performance analytics** in session details or Data quality to exclude a session. Exclusions update records, charts, highlights, recaps and calendar while preserving original History and Apple Health data. Excluded UUIDs are saved locally with UserDefaults and survive refreshes and normal app restarts; restoring the toggle reverses the exclusion. Snapshot mode uses temporary exclusions and never changes saved choices. Exclusions do not sync across devices.
 
-CI runs calculation tests and UI tests for Insights navigation, progression, calendar/recap launch and reversible exclusions. After a successful app build, screenshot capture and upload still run if a UI test fails; test failures continue to fail the workflow. `iphone-render` includes the original tabs plus Insights, Records, Recap, Calendar and Duplicates. Snapshot launch flags are `--snapshot-insights`, `--snapshot-records`, `--snapshot-recap`, `--snapshot-calendar` and `--snapshot-duplicates`.
+CI runs calculation tests and UI tests for Insights navigation, progression, calendar/recap launch and reversible exclusions. After a successful app build, screenshot capture and upload still run if a UI test fails; test failures continue to fail the workflow. `iphone-render` includes the original tabs plus Insights, Records, Recap, Calendar Duplicates, sensor details and manual sets. Snapshot launch flags are `--snapshot-insights`, `--snapshot-records`, `--snapshot-recap`, `--snapshot-calendar` and `--snapshot-duplicates`.
+
+## Workout details and manual strength logs
+
+Open any session → **Heart rate, route & workout details**. This requests additional read-only HealthKit permissions on demand. Heart-rate samples are available for every activity; cycling adds power (watts) and cadence (rpm). Only samples associated with the original workout are queried; unrelated readings from overlapping workouts are not mixed in. Dots show sample values (which HealthKit may coalesce into interval averages), source names and a recorded range, without inventing full-session averages or instantaneous peaks. Empty data does not distinguish missing recordings from denied permissions. Errors are separate and Refresh details retries the queries independently.
+
+Distance-based workouts show recorded route segments on a map. Invalid or inaccurate locations and gaps over 60 seconds split the path. Routes do not alter official distances or performance records. These details stay in memory and are reread on opening; no backend or health-data upload is added. MapKit may retrieve base-map tiles.
+
+Strength sessions → **Exercise sets (manual)** supports adding, editing and deleting exercise entries with reps and external load in kilograms (0 for unweighted). These local entries are explicitly manual, never inferred from workout duration, and do not change Apple Health or performance rankings. They are keyed by the HealthKit workout UUID, stored atomically with iOS file protection, and survive app restarts. They do not sync between devices and are removed on app deletion. Failed reads do not overwrite existing files; failed saves preserve prior entries. Snapshot mode uses temporary entries only.
+
+CI additionally checks strength entry validation/serialization and simulator navigation, chart loading, and manual set add/edit/delete flows. Screenshot artifacts also include sensor details and the manual sets screen (`--snapshot-sensors`, `--snapshot-sets`). Real-device acceptance still requires granting/denying each HealthKit permission, checking recorded sensor sources and routes against Apple Health, and verifying strength entries after a normal app restart. Simulator samples cannot validate actual HealthKit import.
