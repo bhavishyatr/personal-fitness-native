@@ -67,7 +67,7 @@ struct RecordDirectory: View {
                 ForEach(ActivityKind.allCases) { Text($0.rawValue).tag($0.rawValue) }
             }
             RecordYearPicker(year: $year, sessions: store.sessions)
-            Text(year.map { "Best recorded performances in \($0)." } ?? "Best performances across all accessible history.").font(.caption).foregroundStyle(.secondary)
+            Text(year.map { "Best recorded performances in \(String($0))." } ?? "Best performances across all accessible history.").font(.caption).foregroundStyle(.secondary)
             ForEach(visibleSeries) { series in
                 NavigationLink { SeriesDetail(series: series, year: year) } label: {
                     VStack(alignment: .leading, spacing: 4) {
@@ -92,7 +92,7 @@ struct SeriesDetail: View {
         List {
             Section {
                 Text(series.title).font(.title2.bold())
-                Text(year.map { "Year: \($0)" } ?? "All time").font(.subheadline)
+                Text(year.map { "Year: \(String($0))" } ?? "All time").font(.subheadline)
                 Text("\(series.kind.rawValue) · \(series.environment)").foregroundStyle(.secondary)
                 Text("Included recorded workouts only. Ties retain the earlier benchmark. Each workout contributes one best result to this metric.").font(.footnote)
             }
