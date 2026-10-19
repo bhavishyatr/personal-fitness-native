@@ -75,8 +75,9 @@ final class PerformanceUITests: XCTestCase {
         XCTAssertTrue(picker.waitForExistence(timeout: 20))
         picker.tap()
         let year = String(Calendar.current.component(.year, from: Date()))
-        app.buttons[year].tap()
-        XCTAssertTrue(app.staticTexts["Best recorded performances in \(year)."].waitForExistence(timeout: 5))
+        app.buttons["record-year-\(year)"].tap()
+        let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", year), object: picker)
+        XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 5), .completed, app.debugDescription)
         let series = app.buttons["series-Badminton-Longest duration-Outdoor"]
         XCTAssertTrue(series.waitForExistence(timeout: 5))
         series.tap()

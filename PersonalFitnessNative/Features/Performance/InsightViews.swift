@@ -289,12 +289,22 @@ struct RecordYearPicker: View {
     @Binding var year: Int?
     let sessions: [PerformanceSession]
     var body: some View {
-        Picker("Record period", selection: $year) {
-            Text("All time").tag(Optional<Int>.none)
+        Menu {
+            Button("All time") { year = nil }.accessibilityIdentifier("record-year-all")
             ForEach(Array(Set(InsightMath.years(sessions) + (year.map { [$0] } ?? []))).sorted(by: >), id: \.self) { value in
-                Text(String(value)).tag(Optional(value))
+                Button(String(value)) { year = value }.accessibilityIdentifier("record-year-\(value)")
             }
-        }.accessibilityIdentifier("record-year-picker")
+        } label: {
+            HStack {
+                Text("Record period")
+                Spacer()
+                Text(year.map(String.init) ?? "All time")
+                Image(systemName: "chevron.up.chevron.down").font(.caption)
+            }
+        }
+        .accessibilityIdentifier("record-year-picker")
+        .accessibilityLabel("Record period")
+        .accessibilityValue(year.map(String.init) ?? "All time")
     }
 }
 
