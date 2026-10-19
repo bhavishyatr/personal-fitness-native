@@ -56,14 +56,20 @@ private struct HighlightEvent {
 struct RecordDirectory: View {
     @Bindable var store: PerformanceStore
     @State private var kind = "All"
+    @State private var year: Int?
+    private var visibleSeries: [RecordSeries] {
+        InsightMath.series(InsightMath.inYear(store.sessions, year: year)).filter { kind == "All" || $0.kind.rawValue == kind }
+    }
     var body: some View {
         List {
             Picker("Workout type", selection: $kind) {
                 Text("All").tag("All")
                 ForEach(ActivityKind.allCases) { Text($0.rawValue).tag($0.rawValue) }
             }
-            ForEach(store.recordSeries.filter { kind == "All" || $0.kind.rawValue == kind }) { series in
-                NavigationLink { SeriesDetail(series: series) } label: {
+            RecordYearPicker(year: $year, sessions: store.sessions)
+            Text(year.map { "Best recorded performances in \(String($0))." } ?? "Best performances across all accessible history.").font(.caption).foregroundStyle(.secondary)
+            ForEach(visibleSeries) { series in
+                NavigationLink { SeriesDetail(series: series, year: year) } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("\(series.kind.rawValue) · \(series.title)").font(.headline)
                         Text("\(series.environment) · \(series.entries.count) performances").font(.caption).foregroundStyle(.secondary)
@@ -71,7 +77,7 @@ struct RecordDirectory: View {
                     }
                 }.accessibilityIdentifier("series-\(series.kind.rawValue)-\(series.metricID)-\(series.environment)")
             }
-            if store.recordSeries.isEmpty { Text("No record data available yet.") }
+            if visibleSeries.isEmpty { Text("No record data available for this workout type and period.") }
         }.navigationTitle("Records")
     }
 }
@@ -79,12 +85,14 @@ struct RecordDirectory: View {
 struct SeriesDetail: View {
     @Environment(PerformanceStore.self) private var store
     let series: RecordSeries
+    var year: Int? = nil
     // Re-resolve after exclusions so an open record page cannot display stale rankings.
-    private var current: RecordSeries? { store.recordSeries.first { $0.id == series.id } }
+    private var current: RecordSeries? { InsightMath.series(InsightMath.inYear(store.sessions, year: year)).first { $0.id == series.id } }
     var body: some View {
         List {
             Section {
                 Text(series.title).font(.title2.bold())
+                Text(year.map { "Year: \(String($0))" } ?? "All time").font(.subheadline)
                 Text("\(series.kind.rawValue) · \(series.environment)").foregroundStyle(.secondary)
                 Text("Included recorded workouts only. Ties retain the earlier benchmark. Each workout contributes one best result to this metric.").font(.footnote)
             }
@@ -274,5 +282,59 @@ struct ExclusionControl: View {
     var body: some View {
         Toggle("Include in performance analytics", isOn: Binding(get: { !store.isExcluded(session.id) }, set: { store.setExcluded(!$0, id: session.id) }))
             .accessibilityIdentifier("include-\(session.id)")
+    }
+}
+
+struct RecordYearPicker: View {
+    @Binding var year: Int?
+    let sessions: [PerformanceSession]
+    var body: some View {
+        Menu {
+            Button("All time") { year = nil }.accessibilityIdentifier("record-year-all")
+            ForEach(Array(Set(InsightMath.years(sessions) + (year.map { [$0] } ?? []))).sorted(by: >), id: \.self) { value in
+                Button(String(value)) { year = value }.accessibilityIdentifier("record-year-\(value)")
+            }
+        } label: {
+            HStack {
+                Text("Record period")
+                Spacer()
+                Text(year.map(String.init) ?? "All time")
+                Image(systemName: "chevron.up.chevron.down").font(.caption)
+            }
+        }
+        .accessibilityIdentifier("record-year-picker")
+        .accessibilityLabel("Record period")
+        .accessibilityValue(year.map(String.init) ?? "All time")
+    }
+}
+
+struct WorkoutBestComparison: View {
+    @Environment(PerformanceStore.self) private var store
+    let session: PerformanceSession
+    @State private var year: Int?
+    private var comparisons: [BestComparison] { InsightMath.comparisons(for: session, sessions: store.sessions, year: year) }
+    var body: some View {
+        List {
+            Section {
+                RecordYearPicker(year: $year, sessions: store.sessions.filter { $0.kind == session.kind })
+                Text("\(session.kind.rawValue) · \(session.environment)").font(.headline)
+                Text("Compared with included workouts of the same type and environment. The selected session is included in the benchmark. Duration and distance maxima describe your history; longer does not always mean better.").font(.footnote).foregroundStyle(.secondary)
+            }
+            if store.isExcluded(session.id) {
+                Text("This workout is excluded from analytics. Restore it in session details to compare personal bests.")
+            } else if comparisons.isEmpty {
+                Text("No comparable records in this period. Choose the year containing this workout or All time.")
+            }
+            ForEach(comparisons) { item in
+                Section(item.series.title) {
+                    LabeledContent("This workout", value: item.entry.record.value)
+                    LabeledContent("Personal best", value: item.best.record.value)
+                    Text(item.gapLabel).foregroundStyle(.tint)
+                    Text(item.entry.record.explanation).font(.caption).foregroundStyle(.secondary)
+                    NavigationLink("View best workout") { RecordDetail(record: item.best.record) }
+                    NavigationLink("Progression & top 10") { SeriesDetail(series: item.series, year: year) }
+                }
+            }
+        }.navigationTitle("Compare with best")
     }
 }

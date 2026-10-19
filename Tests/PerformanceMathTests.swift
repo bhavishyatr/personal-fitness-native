@@ -45,6 +45,33 @@ struct PerformanceMathTests {
         let duplicateNoDistance = PerformanceSession(id: UUID(), kind: .running, date: now, duration: 500, distance: nil, source: "Test", environment: "Outdoor")
         check(InsightMath.duplicates([improved, duplicateNoDistance]).isEmpty, "Missing distance is insufficient duplicate evidence")
         check(InsightMath.series([strength]).allSatisfy { $0.metricID != "Longest distance" }, "Strength ranking excludes distance")
+        let fiveK = PerformanceSession(id: UUID(), kind: .running, date: now, duration: 1500, distance: 5000, source: "Test", environment: "Outdoor")
+        let slowerFiveK = PerformanceSession(id: UUID(), kind: .running, date: old, duration: 1600, distance: 5040, source: "Test", environment: "Outdoor")
+        let tooShort = PerformanceSession(id: UUID(), kind: .running, date: now, duration: 1000, distance: 4900, source: "Test", environment: "Outdoor")
+        let benchmarks = InsightMath.series([fiveK, slowerFiveK, tooShort]).first { $0.metricID == "Best whole workout near 5 km" }!
+        check(benchmarks.entries.count == 2, "1% distance tolerance excludes short workouts")
+        check(benchmarks.ranking.first?.id == fiveK.id, "Fixed-distance benchmarks rank by lower active time")
+        let comparison = InsightMath.comparisons(for: slowerFiveK, sessions: [fiveK, slowerFiveK]).first { $0.series.metricID == benchmarks.metricID }!
+        check(comparison.gap == 100 && !comparison.isBest, "Compare matching metric with its best")
+        check(InsightMath.comparisons(for: fiveK, sessions: [slowerFiveK]).isEmpty, "Excluded sessions cannot compare")
+        let indoorComparison = InsightMath.comparisons(for: indoor, sessions: all).first { $0.series.metricID == "Best whole run near 1 mi" }!
+        check(indoorComparison.best.id == indoor.id, "Never compare across environments")
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: -7 * 3600)!
+        let boundary = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1))!
+        let before = PerformanceSession(id: UUID(), kind: .walking, date: boundary.addingTimeInterval(-1), duration: 600, distance: 1000, source: "Test", environment: "Outdoor")
+        let after = PerformanceSession(id: UUID(), kind: .walking, date: boundary, duration: 700, distance: 1000, source: "Test", environment: "Outdoor")
+        check(InsightMath.inYear([before, after], year: 2026, calendar: calendar).map(\.id) == [after.id], "Year uses local calendar boundaries")
+        check(InsightMath.inYear([before, after], year: nil, calendar: calendar).count == 2, "All time retains both years")
+        check(InsightMath.inYear([before, after], year: 2024, calendar: calendar).isEmpty, "Empty year has no fabricated records")
+        for kind in ActivityKind.allCases {
+            let sample = PerformanceSession(id: UUID(), kind: kind, date: now, duration: 600, distance: 2000, source: "Test", environment: "Indoor")
+            let records = PerformanceMath.records([sample], kind: kind)
+            check(records.contains { $0.id == "Longest duration" }, "Every supported activity has descriptive duration history")
+            if !kind.hasDistance { check(records.count == 1, "Non-distance sports must not acquire speed records") }
+            if kind == .swimming { check(!records.contains { $0.id.hasPrefix("Best whole") }, "Swimming speed requires pool and stroke context") }
+        }
+        check(PerformanceMath.records([tie, improved], kind: .running).first { $0.id == "Best whole run near 1 mi" }?.session.id == improved.id, "Dashboard ties retain earlier benchmark")
         print("Performance analytics and insights checks passed")
     }
 }

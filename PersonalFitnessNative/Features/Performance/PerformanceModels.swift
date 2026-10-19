@@ -107,7 +107,13 @@ enum PerformanceMath {
         let valid = sessions.filter { $0.kind == kind && $0.duration.isFinite && $0.duration > 0 }
         var result: [PerformanceRecord] = []
         func add(_ title: String, candidates: [(PerformanceSession, Double)], lower: Bool, format: (Double) -> String, note: String) {
-            let ordered = candidates.filter { $0.1.isFinite && $0.1 > 0 }.sorted { lower ? $0.1 < $1.1 : $0.1 > $1.1 }
+            let ordered = candidates.filter { $0.1.isFinite && $0.1 > 0 }.sorted {
+                if $0.1 == $1.1 {
+                    if $0.0.date == $1.0.date { return $0.0.id.uuidString < $1.0.id.uuidString }
+                    return $0.0.date < $1.0.date
+                }
+                return lower ? $0.1 < $1.1 : $0.1 > $1.1
+            }
             guard let winner = ordered.first else { return }
             let previous = ordered.first { $0.0.date < winner.0.date }
             result.append(PerformanceRecord(id: title, title: title, value: format(winner.1), session: winner.0, explanation: note,
@@ -139,6 +145,24 @@ enum PerformanceMath {
                 }
             }
         }
+        for target in distanceBenchmarks(kind) {
+            add("Best whole workout near \(target.label)", candidates: valid.compactMap { session in
+                guard let distance = session.distance, distance.isFinite,
+                      abs(distance - target.meters) <= target.meters * 0.01 else { return nil }
+                return (session, session.duration)
+            }, lower: true, format: time,
+                note: "Complete workouts within ±1% of \(target.label), ranked by active duration. Distances, pauses, routes, terrain and equipment can differ. This is an approximate-distance benchmark, not an exact race result.")
+        }
         return result
+    }
+
+    static func distanceBenchmarks(_ kind: ActivityKind) -> [(label: String, meters: Double)] {
+        switch kind {
+        case .running: [("5 km", 5000), ("10 km", 10000), ("Half marathon", 21097.5), ("Marathon", 42195)]
+        case .walking: [("1 km", 1000), ("5 km", 5000), ("10 km", 10000)]
+        case .cycling: [("10 km", 10000), ("20 km", 20000), ("40 km", 40000)]
+        case .rowing: [("500 m", 500), ("2 km", 2000), ("5 km", 5000)]
+        default: []
+        }
     }
 }

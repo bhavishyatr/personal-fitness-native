@@ -161,7 +161,7 @@ struct ActivityDashboard: View {
         case .running: "Continuous 1–4 mile efforts require detailed distance samples. Missing, overlapping, coarse, or incomplete samples do not produce segment records. Tap a record for its calculation and original workout."
         case .cycling: "Indoor and outdoor records are separate. Open a session for recorded power and cadence samples. Sensor coverage may be incomplete; power and cadence records are not inferred."
         case .swimming: "Distance and duration are shown. Stroke and pool/open-water classification are not imported yet, so speed records are withheld."
-        case .rowing: "Distance and duration are shown when recorded. Exact-distance effort and power records require detailed samples not imported yet."
+        case .rowing: "Distance, duration and approximate 500 m, 2 km and 5 km whole-workout benchmarks are shown when recorded. Equipment may differ. Exact-distance efforts and power records require detailed samples not imported yet."
         case .yoga, .pilates: "Frequency and duration describe activity. Longer sessions are not automatically better performance."
         default: "Metrics reflect available workout data. Calories and higher heart rate are not treated as personal bests."
         }
@@ -213,6 +213,7 @@ struct SessionDetail: View {
     let session: PerformanceSession
     var body: some View {
         List {
+            NavigationLink("Compare with personal bests") { WorkoutBestComparison(session: session) }.accessibilityIdentifier("compare-best-link")
             NavigationLink("Heart rate, route & workout details") { WorkoutDetailsView(session: session) }.accessibilityIdentifier("workout-details-link")
             if session.kind == .strength {
                 NavigationLink("Exercise sets (manual)") { StrengthLogView(session: session) }

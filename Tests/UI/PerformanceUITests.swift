@@ -66,6 +66,34 @@ final class PerformanceUITests: XCTestCase {
     }
 
     @MainActor
+    func testYearlyRecordsAndBestComparison() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-snapshot", "--snapshot-records"]
+        app.launch()
+        let picker = app.buttons["record-year-picker"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 20))
+        picker.tap()
+        let year = String(Calendar.current.component(.year, from: Date()))
+        app.buttons["record-year-\(year)"].tap()
+        let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", year), object: picker)
+        XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 5), .completed, app.debugDescription)
+        let series = app.buttons["series-Badminton-Longest duration-Outdoor"]
+        XCTAssertTrue(series.waitForExistence(timeout: 5))
+        series.tap()
+        XCTAssertTrue(app.staticTexts["Year: \(year)"].waitForExistence(timeout: 5))
+        app.terminate()
+        app.launchArguments = ["--ui-snapshot", "--snapshot-history"]
+        app.launch()
+        let session = app.buttons.containing(.staticText, identifier: "Running").firstMatch
+        XCTAssertTrue(session.waitForExistence(timeout: 20))
+        session.tap()
+        app.buttons["compare-best-link"].tap()
+        XCTAssertTrue(app.navigationBars["Compare with best"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Personal best"].firstMatch.exists)
+    }
+
+    @MainActor
     func testCalendarAndRecapLaunch() {
         continueAfterFailure = false
         let app = XCUIApplication()

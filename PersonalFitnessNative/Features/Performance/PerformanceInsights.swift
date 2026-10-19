@@ -75,6 +75,25 @@ enum InsightMath {
         }.sorted { $0.id < $1.id }
     }
 
+    static func years(_ sessions: [PerformanceSession], calendar: Calendar = .current) -> [Int] {
+        Set(sessions.map { calendar.component(.year, from: $0.date) }).sorted(by: >)
+    }
+
+    static func inYear(_ sessions: [PerformanceSession], year: Int?, calendar: Calendar = .current) -> [PerformanceSession] {
+        guard let year else { return sessions }
+        return sessions.filter { calendar.component(.year, from: $0.date) == year }
+    }
+
+    static func comparisons(for session: PerformanceSession, sessions: [PerformanceSession], year: Int? = nil) -> [BestComparison] {
+        let candidates = inYear(sessions, year: year).filter { $0.kind == session.kind && $0.environment == session.environment }
+        guard candidates.contains(where: { $0.id == session.id }) else { return [] }
+        return series(candidates).compactMap { series in
+            guard let entry = series.entries.first(where: { $0.id == session.id }),
+                  let best = series.ranking.first else { return nil }
+            return BestComparison(series: series, entry: entry, best: best)
+        }
+    }
+
     static func eligible(_ sessions: [PerformanceSession], excluding ids: Set<UUID>) -> [PerformanceSession] {
         sessions.filter { !ids.contains($0.id) }
     }
@@ -112,5 +131,22 @@ enum InsightMath {
             series.progression.dropFirst().filter { $0.record.session.date >= interval.start && $0.record.session.date < interval.end }.map { (series, $0) }
         }.sorted { $0.1.record.session.date > $1.1.record.session.date }
         return MonthSummary(start: interval.start, end: interval.end, sessions: included, previousSessions: previous, recordEvents: events)
+    }
+}
+
+struct BestComparison: Identifiable {
+    let series: RecordSeries
+    let entry: RankedPerformance
+    let best: RankedPerformance
+    var id: String { series.id }
+    var gap: Double { abs(entry.score - best.score) }
+    var isBest: Bool { entry.score == best.score }
+    var gapLabel: String {
+        if isBest { return entry.id == best.id ? "Personal best for this period" : "Matches personal best for this period" }
+        switch series.metricID {
+        case "Longest distance": return "\(PerformanceMath.distance(gap, kind: series.kind)) shorter"
+        case "Most climbing": return String(format: "%.0f m less climbing", gap)
+        default: return "\(PerformanceMath.time(gap)) \(series.lowerIsBetter ? "slower" : "shorter")"
+        }
     }
 }
