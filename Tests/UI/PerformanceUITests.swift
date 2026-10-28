@@ -41,9 +41,13 @@ final class PerformanceUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.navigationBars["Workout details"].waitForExistence(timeout: 20))
         XCTAssertTrue(app.staticTexts["Recorded range"].firstMatch.waitForExistence(timeout: 10))
-        app.swipeUp()
-        app.swipeUp()
-        XCTAssertTrue(app.staticTexts["Cycling cadence"].waitForExistence(timeout: 5))
+        // List sections are lazily loaded, so a fixed number of swipes is brittle.
+        let cadence = app.staticTexts["Cycling cadence"]
+        for _ in 0..<8 {
+            if cadence.exists { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(cadence.waitForExistence(timeout: 10), "Cycling cadence section was not found after scrolling")
         app.terminate()
         app.launchArguments = ["--ui-snapshot", "--snapshot-sets"]
         app.launch()
@@ -63,6 +67,34 @@ final class PerformanceUITests: XCTestCase {
         row.swipeLeft()
         app.buttons["Delete"].tap()
         XCTAssertTrue(app.staticTexts["No sets entered yet."].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testYearlyRecordsAndBestComparison() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-snapshot", "--snapshot-records"]
+        app.launch()
+        let picker = app.buttons["record-year-picker"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 20))
+        picker.tap()
+        let year = String(Calendar.current.component(.year, from: Date()))
+        app.buttons["record-year-\(year)"].tap()
+        let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", year), object: picker)
+        XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 5), .completed, app.debugDescription)
+        let series = app.buttons["series-Badminton-Longest duration-Outdoor"]
+        XCTAssertTrue(series.waitForExistence(timeout: 5))
+        series.tap()
+        XCTAssertTrue(app.staticTexts["Year: \(year)"].waitForExistence(timeout: 5))
+        app.terminate()
+        app.launchArguments = ["--ui-snapshot", "--snapshot-history"]
+        app.launch()
+        let session = app.buttons.containing(.staticText, identifier: "Running").firstMatch
+        XCTAssertTrue(session.waitForExistence(timeout: 20))
+        session.tap()
+        app.buttons["compare-best-link"].tap()
+        XCTAssertTrue(app.navigationBars["Compare with best"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Personal best"].firstMatch.exists)
     }
 
     @MainActor
