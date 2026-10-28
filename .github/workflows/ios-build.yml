@@ -134,7 +134,7 @@ jobs:
               # Multi-display simulators (e.g. iPhone Duo) require an explicit
               # display ID. Retry on the primary display if needed.
               if ! xcrun simctl io "$DEVICE_UDID" screenshot "$screenshot_path" 2> /tmp/simctl-screenshot-error.log; then
-                primary_display="$(sed -nE 's/^[[:space:]]*--display=([0-9]+)[[:space:]]+.*[[:space:]]\\(primary\\)[[:space:]]+[0-9]+x[0-9]+[[:space:]]*$/\\1/p' /tmp/simctl-screenshot-error.log | head -n 1)"
+                primary_display="$(grep -F ' (primary) ' /tmp/simctl-screenshot-error.log | awk '{sub(/^--display=/, "", $1); print $1; exit}')"
                 if [[ -z "$primary_display" ]]; then
                   cat /tmp/simctl-screenshot-error.log >&2
                   exit 1
