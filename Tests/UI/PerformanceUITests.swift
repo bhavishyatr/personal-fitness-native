@@ -41,9 +41,13 @@ final class PerformanceUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.navigationBars["Workout details"].waitForExistence(timeout: 20))
         XCTAssertTrue(app.staticTexts["Recorded range"].firstMatch.waitForExistence(timeout: 10))
-        app.swipeUp()
-        app.swipeUp()
-        XCTAssertTrue(app.staticTexts["Cycling cadence"].waitForExistence(timeout: 5))
+        // List sections are lazily loaded, so a fixed number of swipes is brittle.
+        let cadence = app.staticTexts["Cycling cadence"]
+        for _ in 0..<8 {
+            if cadence.exists { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(cadence.waitForExistence(timeout: 10), "Cycling cadence section was not found after scrolling")
         app.terminate()
         app.launchArguments = ["--ui-snapshot", "--snapshot-sets"]
         app.launch()
