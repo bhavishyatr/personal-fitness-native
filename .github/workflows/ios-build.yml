@@ -80,6 +80,8 @@ jobs:
                   and device["name"].startswith("iPhone")
               ]
               if iphones:
+                  # Prefer single-display iPhones over foldable Duo simulators.
+                  iphones.sort(key=lambda device: ("Duo" in device["name"], device["name"]))
                   print(iphones[0]["udid"])
                   break
           else:
@@ -134,7 +136,7 @@ jobs:
               # Multi-display simulators (e.g. iPhone Duo) require an explicit
               # display ID. Retry on the primary display if needed.
               if ! xcrun simctl io "$DEVICE_UDID" screenshot "$screenshot_path" 2> /tmp/simctl-screenshot-error.log; then
-                primary_display="$(grep -F ' (primary) ' /tmp/simctl-screenshot-error.log | awk '{sub(/^--display=/, "", $1); print $1; exit}')"
+                primary_display="$(grep -F ' (primary) ' /tmp/simctl-screenshot-error.log | awk '{sub(/^--display=/, "", $1); print $1; exit}' || true)"
                 if [[ -z "$primary_display" ]]; then
                   cat /tmp/simctl-screenshot-error.log >&2
                   exit 1
