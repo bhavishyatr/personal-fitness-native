@@ -130,8 +130,19 @@ jobs:
             verified=false
             for attempt in 1 2 3 4 5 6; do
               sleep 5
-              xcrun simctl io "$DEVICE_UDID" screenshot "screenshots/personal-fitness-$tab.png"
-              if /tmp/verify-screenshot "screenshots/personal-fitness-$tab.png" "$tab"; then
+              screenshot_path="screenshots/personal-fitness-$tab.png"
+              # Multi-display simulators (e.g. iPhone Duo) require an explicit
+              # display ID. Retry on the primary display if needed.
+              if ! xcrun simctl io "$DEVICE_UDID" screenshot "$screenshot_path" 2> /tmp/simctl-screenshot-error.log; then
+                primary_display="$(sed -nE 's/^[[:space:]]*--display=([0-9]+)[[:space:]]+.*[[:space:]]\\(primary\\)[[:space:]]+[0-9]+x[0-9]+[[:space:]]*$/\\1/p' /tmp/simctl-screenshot-error.log | head -n 1)"
+                if [[ -z "$primary_display" ]]; then
+                  cat /tmp/simctl-screenshot-error.log >&2
+                  exit 1
+                fi
+                echo "Capturing primary simulator display $primary_display"
+                xcrun simctl io "$DEVICE_UDID" screenshot --display="$primary_display" "$screenshot_path"
+              fi
+              if /tmp/verify-screenshot "$screenshot_path" "$tab"; then
                 verified=true
                 break
               fi
